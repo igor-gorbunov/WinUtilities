@@ -31,3 +31,9 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Visual Studio binary files
+*.sdf
+*.suo
+*.opensdf
+Build/
