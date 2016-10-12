@@ -1,7 +1,12 @@
 #pragma once
 
+#pragma warning(push)
+#pragma warning(disable: 4820)
+
 #include <Windows.h>
 #include <tchar.h>
+
+#pragma warning(pop)
 
 #if defined(_WINDLL_USERMODEAPILIBRARY)
 #define LINK_USERMODEAPILIBRARY __declspec(dllexport)
