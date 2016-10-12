@@ -13,15 +13,22 @@
 
 #pragma comment(lib, "usermodeapi")
 
+LPCTSTR gFilename = NULL;
+LPCTSTR gDrivername = NULL;
+BOOL gInstall = FALSE;
+BOOL gRemove = FALSE;
+
+#define NUMBER_OF_OPTIONS	3
+
 int WINAPI _tWinMain(_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _In_ LPTSTR CmdLine, _In_ int ShowCmd)
 {
 	HRESULT Result;
 	HANDLE StdInputHandle, StdOutputHandle, StdErrorHandle;
 	LPWSTR *Arguments;
-	UINT NmOfArguments, NmOfOptions = 3;
+	UINT NmOfArguments, NmOfOptions = NUMBER_OF_OPTIONS;
 	UINT FoundOption;
 	LONG OptionResult;
-	COMMANDLINEOPTION Options[3];
+	COMMANDLINEOPTION Options[NUMBER_OF_OPTIONS];
 	GETCMDLINEOPTION_STATE State;
 	LPCTSTR OptionArgument;
 
@@ -68,25 +75,27 @@ int WINAPI _tWinMain(_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 	if (FALSE == SetConsoleCP(1200))
 		_ftprintf(stderr, _T("DriverInstallUtility: Call to SetConsoleCP() failed.\n"));
 
-	_tprintf(_T("Command line string: %s\n"), GetCommandLine());
+	//_tprintf(_T("Command line string: %s\n"), GetCommandLine());
+
 	Arguments = CommandLineToArgvW(GetCommandLine(), (int *)&NmOfArguments);
-	for (UINT i = 0; i < NmOfArguments; i++)
-		_tprintf(_T("Command line argument [%u]: %s\n"), i, Arguments[i]);
+
+	//for (UINT i = 0; i < NmOfArguments; i++)
+	//	_tprintf(_T("Command line argument [%u]: %s\n"), i, Arguments[i]);
 	
-	Options[0].ShortName = _T("l");
-	Options[0].LongName = _T("long");
+	Options[0].ShortName = _T("i");
+	Options[0].LongName = _T("install");
 	Options[0].ArgType = CMDLINEOPTARG_NONE;
-	Options[0].Value = -1;
+	Options[0].Value = 0;
 
-	Options[1].ShortName = NULL;
-	Options[1].LongName = _T("unsigned");
-	Options[1].ArgType = CMDLINEOPTARG_OPTIONAL;
-	Options[1].Value = 0;
+	Options[1].ShortName = _T("n");
+	Options[1].LongName = _T("name");
+	Options[1].ArgType = CMDLINEOPTARG_REQUIRED;
+	Options[1].Value = 1;
 
-	Options[2].ShortName = _T("z");
-	Options[2].LongName = _T("zephyr");
+	Options[2].ShortName = _T("r");
+	Options[2].LongName = _T("remove");
 	Options[2].ArgType = CMDLINEOPTARG_REQUIRED;
-	Options[2].Value = 1;
+	Options[2].Value = 2;
 
 	if (IS_ERROR(Result = CmdLineInitialize(NmOfArguments, Arguments, NmOfOptions, Options, FALSE, &State)))
 		_tprintf(_T("Call to CmdLineInitialize() failed (Result = 0x%08X).\n"), Result);
@@ -97,36 +106,31 @@ int WINAPI _tWinMain(_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 		switch (Result)
 		{
 		case MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ERROR_SUCCESS):
-			_tprintf(_T("Main: next option = '%s', option argument = '%s'.\n"),
-				State.Arguments[FoundOption], OptionArgument);
+			//_tprintf(_T("Main: next option = '%s', option argument = '%s'.\n"),
+			//	State.Arguments[FoundOption], OptionArgument);
 			switch (OptionResult)
 			{
-			case -1:
-				_tprintf(_T("\tOption value: LONG, argument not permitted.\n"));
-				break;
 			case 0:
-				_tprintf(_T("\tOption value: UNSIGNED, argument is optional"));
-				if (NULL == OptionArgument)
-				{
-					_tprintf(_T(", not supplied.\n"));
-				}
-				else
-				{
-					_tprintf(_T(" = '%s'.\n"), OptionArgument);
-				}
+				gInstall = TRUE;
+				gRemove = FALSE;
 				break;
 			case 1:
-				_tprintf(_T("\tOption value: ZEPHYR, argument is required = '%s'.\n"), OptionArgument);
+				gDrivername = OptionArgument;
+				break;
+			case 2:
+				gInstall = FALSE;
+				gRemove = TRUE;
+				gDrivername = OptionArgument;
 				break;
 			default:
 				break;
 			}
 			break;
 		case MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ERROR_NOT_FOUND):
-			_tprintf(_T("Main: not an option = '%s'.\n"), State.Arguments[FoundOption]);
+			gFilename = State.Arguments[FoundOption];
 			break;
 		case MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ERROR_NO_MATCH):
-			_tprintf(_T("Main: option is not supported = '%s'.\n"), State.Arguments[FoundOption]);
+			_tprintf(_T("Main: no such option = '%s'.\n"), State.Arguments[FoundOption]);
 			break;
 		case MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ERROR_INCORRECT_SIZE):
 			_tprintf(_T("Main: option syntax is incorrect = '%s'.\n"), State.Arguments[FoundOption]);
@@ -141,25 +145,31 @@ int WINAPI _tWinMain(_In_ HINSTANCE Instance, _In_opt_ HINSTANCE PrevInstance, _
 		Result = CmdLineGetNextOption(&State, &OptionResult, &FoundOption, &OptionArgument);
 	}
 
-	//if (IS_ERROR(DrvInstall_Create(_T("DummyDevice"), NULL, _T("DummyDevice.sys"))))
-	//{
-	//	_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Create() failed.\n"));
-	//	return 1;
-	//}
-	//if (IS_ERROR(DrvInstall_Start(_T("DummyDevice"))))
-	//{
-	//	_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Start() failed.\n"));
-	//	return 1;
-	//}
-	if (IS_ERROR(DrvInstall_Stop(_T("DummyDevice"))))
+	if (TRUE == gInstall)
 	{
-		_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Stop() failed.\n"));
-		return 1;
+		if (IS_ERROR(DrvInstall_Create(gDrivername, NULL, gFilename)))
+		{
+			_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Create() failed.\n"));
+			return 1;
+		}
+		if (IS_ERROR(DrvInstall_Start(gDrivername)))
+		{
+			_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Start() failed.\n"));
+			return 1;
+		}
 	}
-	if (IS_ERROR(DrvInstall_Remove(_T("DummyDevice"))))
+	else if (TRUE == gRemove)
 	{
-		_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Remove() failed.\n"));
-		return 1;
+		if (IS_ERROR(DrvInstall_Stop(gDrivername)))
+		{
+			_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Stop() failed.\n"));
+			return 1;
+		}
+		if (IS_ERROR(DrvInstall_Remove(gDrivername)))
+		{
+			_ftprintf(stderr, _T("DriverInstallUtility: Call to DrvInstall_Remove() failed.\n"));
+			return 1;
+		}
 	}
 
 	if (FALSE == FreeConsole())

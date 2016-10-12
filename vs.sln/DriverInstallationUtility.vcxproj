@@ -105,6 +105,7 @@
     <ClCompile>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <AdditionalIncludeDirectories>..\include\um;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
